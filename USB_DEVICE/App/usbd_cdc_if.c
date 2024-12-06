@@ -49,7 +49,6 @@
   */
 
 /* USER CODE BEGIN PRIVATE_TYPES */
-extern uint8_t usbBuffer[64];
 
 /* USER CODE END PRIVATE_TYPES */
 
@@ -110,7 +109,7 @@ uint8_t UserTxBufferFS[APP_TX_DATA_SIZE];
 extern USBD_HandleTypeDef hUsbDeviceFS;
 
 /* USER CODE BEGIN EXPORTED_VARIABLES */
-
+extern uint8_t usbBuffer[128];
 /* USER CODE END EXPORTED_VARIABLES */
 
 /**
@@ -262,30 +261,32 @@ static int8_t CDC_Control_FS(uint8_t cmd, uint8_t* pbuf, uint16_t length)
 static int8_t CDC_Receive_FS(uint8_t* Buf, uint32_t *Len)
 {
   /* USER CODE BEGIN 6 */
-  USBD_CDC_SetRxBuffer(&hUsbDeviceFS, &Buf[0]);
-  USBD_CDC_ReceivePacket(&hUsbDeviceFS);
+    USBD_CDC_SetRxBuffer(&hUsbDeviceFS, &Buf[0]);
+    USBD_CDC_ReceivePacket(&hUsbDeviceFS);
 
-  memset (usbBuffer, '\0', 64);  // clear the buffer
-  uint8_t len = (uint8_t)*Len;
-  memcpy(usbBuffer, Buf, len);  // copy the data to the buffer
-  memset(Buf, '\0', len);   // clear the Buf also
+    memset(usbBuffer, '\0', 64); // clear the buffer
+    uint8_t len = (uint8_t)*Len;
+    memcpy(usbBuffer, Buf, len); // copy the data to the buffer
+    memset(Buf, '\0', len); // clear the Buf also
 
-  if(usbBuffer == 'U'){
-	  forward();
-  }
-  else if(usbBuffer == 'D'){
-	  reverse();
-  }
-  else if(usbBuffer == 'L'){
-	  left();
-  }
-  else if(usbBuffer == 'R'){
-	  right();
-  }
-  else if(usbBuffer == 'C'){
-	  stopMotors();
-  }
-  return (USBD_OK);
+    // Check if valid command packet (7 bytes with 'S' command)
+    if(len == 7 && usbBuffer[0] == 'S') {
+        uint8_t motors[] = {0x02, 0x06, 0x08};  // Array of motor IDs
+
+        // Extract motor positions from packet - combine both methods for consistency
+        uint16_t motor2_pos = (uint16_t)usbBuffer[1] | ((uint16_t)usbBuffer[2] << 8);
+        uint16_t motor6_pos = (uint16_t)usbBuffer[3] | ((uint16_t)usbBuffer[4] << 8);
+        uint16_t motor8_pos = (uint16_t)usbBuffer[5] | ((uint16_t)usbBuffer[6] << 8);
+
+        // Set positions for motors using consistent approach
+        setServoPosition(motors[0], motor2_pos);
+
+        setServoPosition(motors[1], motor6_pos);
+
+        setServoPosition(motors[2], motor8_pos);
+    }
+
+    return (USBD_OK);
   /* USER CODE END 6 */
 }
 
