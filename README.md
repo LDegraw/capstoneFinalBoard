@@ -1,1 +1,2 @@
 
+![Pickup Animation](pickup.gif)
